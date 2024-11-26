@@ -34,7 +34,7 @@ D = (D * fsamp).astype(int)
 
 f = 40  # np.linspace(20, 60, Nareas)[::-1]  # Node natural frequency in Hz
 
-muee = 10
+muee = 30
 flnMat = (1 + eta * h[:, None]) * flnMat
 
 Iext = np.zeros((Nareas, Npoints))
