@@ -20,7 +20,7 @@ def _loop(carry, t, dt):
     phase_differences = phases_t - phases_history
 
     # Input to each node
-    Input =  (g *A * phase_differences).sum(axis=1) + Iext[:, t] * np.exp(
+    Input = (g * A * phase_differences).sum(axis=1) + Iext[:, t] * np.exp(
         1j * np.angle(phases_t)
     )
 

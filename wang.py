@@ -40,6 +40,7 @@ flnMat = (1 + eta * h[:, None]) * flnMat
 
 Iext = np.zeros((Nareas, Npoints))
 Iext[0, (time >= 0) & (time <= 0.2)] = 1
+CS = np.linspace(0, 0.1, ntrials)
 
 data = []
 for n in tqdm(range(ntrials)):
@@ -52,7 +53,7 @@ for n in tqdm(range(ntrials)):
         beta,
         Npoints,
         None,
-        np.linspace(0, 1, ntrials)[n] * Iext,
+        CS[n] * Iext,
     )
     data += [temp]
 
@@ -97,7 +98,7 @@ area_names = [
 data = xr.DataArray(
     data[..., ::15],
     dims=("trials", "roi", "times"),
-    coords=((np.arange(ntrials)) + 1, area_names, time[::15]),
+    coords=(CS, area_names, time[::15]),
 )
 
 ## Plot
@@ -128,7 +129,7 @@ plt.show()
 
 ### Decompose in time-frequency domain
 
-data = data.sel(times=slice(-0.2, 2))
+data = data.sel(times=slice(-0.2, 3))
 
 
 freqs = np.linspace(0.3, 80, 30)
