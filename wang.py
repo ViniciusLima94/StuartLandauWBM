@@ -35,7 +35,6 @@ D = (D * fsamp).astype(int)
 f = 40  # np.linspace(20, 60, Nareas)[::-1]  # Node natural frequency in Hz
 
 muee = 1
-# vals = flnMat.flatten()
 flnMat = (1 + eta * h[:, None]) * flnMat
 
 Iext = np.zeros((Nareas, Npoints))
@@ -152,6 +151,38 @@ S = xr.DataArray(
 )
 
 ### Compute phase and amplitude terms
+
+
+def _mi(S, roi_x, roi_y, stim):
+
+    # Define the function to compute MI using HOI and JAX
+    mi_fcn = get_mi("gcmi")
+
+    # vectorize the function to first and second dimension
+    gcmi = jax.vmap(jax.vmap(mi_fcn, in_axes=0), in_axes=0)
+
+    times, freqs = S.times.values, S.freqs.values
+    x = S.sel(roi=[roi_x]).data.squeeze()
+    y = S.sel(roi=[roi_y]).data.squeeze()
+
+    edge = x * np.conj(y)
+    edge_r, edge_i = np.real(edge), np.imag(edge)
+
+    E1 = np.stack((edge_r, edge_i), axis=1)
+    E1 = np.moveaxis(E1, [0, 1], [-1, -2])
+
+    # Stims across trials
+    stim = data.trials.values
+    stim = np.expand_dims(stim, axis=(0, 1))
+    stim = np.tile(stim, (len(freqs), data.sizes["times"], 1, 1))
+
+    E1 = copnorm_nd(E1, axis=-1)
+    stim = copnorm_nd(stim, axis=-1)
+
+    mi = gcmi(E1, stim).T
+
+    return xr.DataArray(mi, dims=("times", "freqs"), coords=(times, freqs))
+
 
 # Define the function to compute MI using HOI and JAX
 mi_fcn = get_mi("gc")
