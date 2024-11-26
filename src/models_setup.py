@@ -55,12 +55,9 @@ def _set_nodes(A: np.ndarray, f: float, fs: float, a: float):
 
     omegas = 2 * np.pi * f
 
-    # Randomly initialize phases and keeps it only up to max delay
-    # phases = 2 * np.pi * np.random.rand(N, 1) + omegas * np.ones((N, 1)) * np.arange(1)
-    phases = 1e-4 * (np.random.rand(N, 1) + 1j * np.random.rand(N, 1))
-
-    # From 0 to 2\pi
-    # phases = phases % (2 * np.pi)
+    phases = dt * np.random.normal(size=(N, 1)) + 1j * dt * np.random.normal(
+        size=(N, 1)
+    )
 
     return N, A, omegas, phases, dt, a
 
@@ -119,11 +116,10 @@ def _set_nodes_delayed(A: np.ndarray, D: np.ndarray, f: float, fs: float, a: flo
     D = max_delay - D
 
     # Randomly initialize phases and keeps it only up to max delay
-    phases = 2 * np.pi * np.random.rand(N, 1) + omegas * np.ones(
-        (N, max_delay)
-    ) * np.arange(max_delay)
+    # phases = 2 * np.pi * np.random.rand(N, 1) + omegas * np.ones(
+    #     (N, max_delay)
+    # ) * np.arange(max_delay)
 
-    # From 0 to 2\pi
-    # phases = phases % (2 * np.pi)
+    phases = dt * np.random.rand(N, max_delay) + 1j * dt * np.random.rand(N, max_delay)
 
-    return N, A, D, omegas, phases.astype(np.complex128), dt, a
+    return N, A, D, omegas, phases, dt, a

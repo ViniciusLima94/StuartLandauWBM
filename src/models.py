@@ -8,27 +8,30 @@ FUNCTIONS LOOP MIGHT BE COMPILED WITH JAX SCAN LATER
 
 
 def _ode(Z: np.complex128, a: float, w: float):
-    return Z * (a + 1j * w - np.abs(Z) ** 2)
+    return Z * (a + 1j * w - np.abs(Z * Z))
 
 
 def _loop(carry, t, dt):
 
-    N, A, Iext, omegas, a, eta, phases_history = carry
+    N, A, g, Iext, omegas, a, eta, phases_history = carry
 
     phases_t = phases_history.squeeze().copy()
 
-    phase_differences = phases_history - phases_t
+    phase_differences = phases_t - phases_history
 
     # Input to each node
-    Input = (A * phase_differences).sum(axis=1) + Iext[:, t] * np.exp(
+    Input =  (g *A * phase_differences).sum(axis=1) + Iext[:, t] * np.exp(
         1j * np.angle(phases_t)
     )
 
     phases_history = (
         phases_t
-        + dt * (_ode(phases_t, a, omegas) + Input)
-        + eta * (np.random.normal(size=N) + 1j * np.random.normal(size=N))
+        + dt * _ode(phases_t, a, omegas)
+        + dt * Input
+        + np.sqrt(dt) * eta * np.random.normal(size=N)
+        + np.sqrt(dt) * eta * 1j * np.random.normal(size=N)
     )
+
     return phases_history.reshape(N, 1)
 
 
@@ -43,7 +46,7 @@ def _loop_delayed(carry, t, dt):
     """
 
     def _return_phase_differences(n, d):
-        return phases_history[np.indices(d.shape)[0], d - 1] * phases_t[n]
+        return phases_history[np.indices(d.shape)[0], d - 1] - phases_t[n]
 
     phase_differences = np.stack(
         [_return_phase_differences(n, d) for n, d in enumerate(D)]
@@ -66,6 +69,7 @@ def _loop_delayed(carry, t, dt):
 
 def KuramotoOscillators(
     A: np.ndarray,
+    g: np.ndarray,
     f: float,
     a: float,
     fs: float,
@@ -81,7 +85,7 @@ def KuramotoOscillators(
         _loop_fun = _loop_delayed
     else:
         N, A, omegas, phases_history, dt, a = _set_nodes(A, f, fs, a)
-        carry = [N, A, Iext, omegas, a, eta * np.sqrt(dt), phases_history]
+        carry = [N, A, g, Iext, omegas, a, eta, phases_history]
         _loop_fun = _loop
 
     # Stored phases of each node

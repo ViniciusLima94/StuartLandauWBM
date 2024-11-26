@@ -10,13 +10,13 @@ if __name__ == "__main__":
     # Model patameters
     w_0 = 2 * np.pi * 40
     a = -5
-    beta = 1
+    beta = 0.001
 
     # Simulation parameters
     dt = 0.0001
-    T = np.arange(0, 1, dt)
+    T = np.arange(0, 5, dt)
 
-    Z = np.ones(T.shape, dtype=np.complex128)
+    Z = (np.random.normal(size=T.shape) + 1j * np.random.normal(size=T.shape)) * dt
 
     for i, t in enumerate(T[:-1]):
         Z[i + 1] = (

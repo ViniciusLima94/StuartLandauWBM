@@ -8,51 +8,27 @@ from tqdm import tqdm
 from hoi.core import get_mi
 from frites.core import copnorm_nd
 
-## Load anatomical data
-data = np.load("interareal/markov2014.npy", allow_pickle=True).item()
-
-# Graph parameters
-Nareas = 29  # Number of areas
-# FLN matrix
-flnMat = data["FLN"].T
-# Distance matrix
-D = data["Distances"] * 1e-3 / 3.5
-# Hierarchy values
-h = np.squeeze(data["Hierarchy"].T)
-
-eta = 4.0
-
 ## Simulation parameters
 
-ntrials = 100
-fsamp = 1 / 1e-4
-time = np.arange(-2, 5, 1 / fsamp)
-beta = 0.001
+ntrials = 200
+fsamp = 10000
+time = np.arange(-0.5, 1, 1 / fsamp)
 Npoints = len(time)
-# Convert to timesteps
-D = (D * fsamp).astype(int)
+Nareas = 3
+C = np.array([[0, 1, 0], [0, 0, 1], [0, 0, 0]]).T
+beta = 1
 
 f = 40  # np.linspace(20, 60, Nareas)[::-1]  # Node natural frequency in Hz
 
-muee = 1
-# vals = flnMat.flatten()
-flnMat = (1 + eta * h[:, None]) * flnMat
+muee = 10
 
 Iext = np.zeros((Nareas, Npoints))
-Iext[0, (time >= 0) & (time <= 0.2)] = 1
+Iext[0, (time > 0) & (time < 0.1)] = 10
 
 data = []
 for n in tqdm(range(ntrials)):
     temp, dt_save = KuramotoOscillators(
-        flnMat,
-        muee,
-        f,
-        -5,
-        fsamp,
-        beta,
-        Npoints,
-        None,
-        np.linspace(0, 1, ntrials)[n] * Iext,
+        C * muee, f, -5, fsamp, beta, Npoints, None, (n + 1) * Iext
     )
     data += [temp]
 
@@ -62,49 +38,20 @@ data.shape
 
 ### Convert to xarray
 
-area_names = [
-    "V1",
-    "V2",
-    "V4",
-    "DP",
-    "MT",
-    "8m",
-    "5",
-    "8l",
-    "TEO",
-    "2",
-    "F1",
-    "STPc",
-    "7A",
-    "46d",
-    "10",
-    "9/46v",
-    "9/46d",
-    "F5",
-    "TEpd",
-    "PBr",
-    "7m",
-    "7B",
-    "F2",
-    "STPi",
-    "PROm",
-    "F7",
-    "8B",
-    "STPr",
-    "24c",
-]
-
 data = xr.DataArray(
     data[..., ::15],
     dims=("trials", "roi", "times"),
-    coords=((np.arange(ntrials)) + 1, area_names, time[::15]),
+    coords=((np.arange(ntrials)) + 1, ["x", "y", "z"], time[::15]),
 )
 
 ## Plot
 
+data = data.sel(times=slice(-0.2, 2))
+
+
 z_data = (data - data.mean("times")) / data.std("times")
 for i in range(Nareas):
-    plt.plot(z_data[-1].times, z_data[-1].values[i].real + (i * 3))
+    plt.plot(z_data[0].times, z_data[-1].values[i] + (i * 3))
 
 
 plt.show()
@@ -128,9 +75,6 @@ plt.show()
 
 ### Decompose in time-frequency domain
 
-data = data.sel(times=slice(-0.2, 2))
-
-
 freqs = np.linspace(0.3, 80, 30)
 
 S = tfr_array_morlet(
@@ -147,7 +91,7 @@ S = tfr_array_morlet(
 S = xr.DataArray(
     S,
     dims=("trials", "roi", "freqs", "times"),
-    coords={"freqs": freqs, "times": data.times.values, "roi": area_names},
+    coords={"freqs": freqs, "times": data.times.values, "roi": data.roi},
 )
 
 ### Compute phase and amplitude terms
@@ -159,9 +103,9 @@ mi_fcn = get_mi("gc")
 gcmi = jax.vmap(jax.vmap(mi_fcn, in_axes=0), in_axes=0)
 
 # Select data for nodes
-x = S.sel(roi=["V1"]).data.squeeze()
-y = S.sel(roi=["V4"]).data.squeeze()
-z = S.sel(roi=["24c"]).data.squeeze()
+x = S.sel(roi=["x"]).data.squeeze()
+y = S.sel(roi=["y"]).data.squeeze()
+z = S.sel(roi=["z"]).data.squeeze()
 
 # Edge activity (with and without normalisation)
 e1 = x * np.conj(y)
@@ -193,6 +137,7 @@ E123 = np.moveaxis(E123, [0, 1], [-1, -2])
 stim = data.trials.values
 stim = np.expand_dims(stim, axis=(0, 1))
 stim = np.tile(stim, (len(freqs), data.sizes["times"], 1, 1))
+
 
 # Copnorm
 E1 = copnorm_nd(E1, axis=-1)
