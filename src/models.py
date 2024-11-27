@@ -1,4 +1,3 @@
-##
 import jax
 import jax.numpy as jnp
 import numpy as np
@@ -10,8 +9,6 @@ FUNCTIONS LOOP MIGHT BE COMPILED WITH JAX SCAN LATER
 """
 
 
-# @jax.jit
-# @partial(jax.vmap, in_axes=(0, None, None))
 @jax.jit
 def _ode(Z: np.complex128, a: float, w: float):
     return Z * (a + 1j * w - jnp.abs(Z * Z))
@@ -66,11 +63,14 @@ def simulate(
 
     jax.config.update("jax_platform_name", device)
 
-    # Assure it is a jax ndarray
-    Iext = jnp.asarray(Iext)
-
     N, A, omegas, phases_history, dt, a = _set_nodes(A, f, fs, a)
-    times = np.arange(T, dtype=int)
+
+    if Iext is None:
+        Iext = jnp.zeros((N, T))
+    else:
+        Iext = jnp.asarray(Iext)  # Assure it is a jax ndarray
+
+    times = np.arange(T, dtype=int)  # Time array
 
     @jax.jit
     def _loop(carry, t):
