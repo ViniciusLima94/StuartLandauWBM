@@ -2,11 +2,17 @@ import numpy as np
 import xarray as xr
 import matplotlib.pyplot as plt
 import jax
-from src.models import KuramotoOscillators
+from src.models import simulate
 from mne.time_frequency.tfr import tfr_array_morlet
 from tqdm import tqdm
 from hoi.core import get_mi
 from frites.core import copnorm_nd
+
+
+jax.config.update("jax_platform_name", "cpu")
+
+x = jax.numpy.square(2)
+print(repr(x.device_buffer.device()))
 
 ## Load anatomical data
 data = np.load("interareal/markov2014.npy", allow_pickle=True).item()
@@ -14,7 +20,7 @@ data = np.load("interareal/markov2014.npy", allow_pickle=True).item()
 # Graph parameters
 Nareas = 29  # Number of areas
 # FLN matrix
-flnMat = data["FLN"].T
+flnMat = data["FLN"]
 # Distance matrix
 D = data["Distances"] * 1e-3 / 3.5
 # Hierarchy values
@@ -34,8 +40,9 @@ D = (D * fsamp).astype(int)
 
 f = 40  # np.linspace(20, 60, Nareas)[::-1]  # Node natural frequency in Hz
 
-muee = 30
-flnMat = (1 + eta * h[:, None]) * flnMat
+g = 10
+flnMat = g * (1 + eta * h)[:, np.newaxis] * flnMat
+# out2 = (1 + eta * h)[:, np.newaxis] * flnMat
 
 Iext = np.zeros((Nareas, Npoints))
 Iext[0, (time >= 0) & (time <= 0.2)] = 1
@@ -43,17 +50,7 @@ CS = np.linspace(0, 0.1, ntrials)
 
 data = []
 for n in tqdm(range(ntrials)):
-    temp, dt_save = KuramotoOscillators(
-        flnMat,
-        muee,
-        f,
-        -5,
-        fsamp,
-        beta,
-        Npoints,
-        None,
-        CS[n] * Iext,
-    )
+    temp = simulate(flnMat.T, f, -5.0, fsamp, beta, Npoints, None, CS[n] * Iext, 109)
     data += [temp]
 
 data = np.stack(data)

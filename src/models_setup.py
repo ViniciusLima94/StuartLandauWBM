@@ -1,4 +1,5 @@
 import numpy as np
+import jax.numpy as jnp
 
 
 def _set_nodes(A: np.ndarray, f: float, fs: float, a: float):
@@ -36,22 +37,22 @@ def _set_nodes(A: np.ndarray, f: float, fs: float, a: float):
     dt = 1 / fs
 
     # Make sure elays(C==0)=0;they are arrays
-    A = np.asarray(A)
+    A = jnp.asarray(A)
 
     # Number of nodes in the network
     N = A.shape[0]
 
     # If float convert to array
     if isinstance(f, float):
-        f = f * np.ones(N)
+        f = f * jnp.ones(N)
     else:
-        f = np.asarray(f)
+        f = jnp.asarray(f)
 
     # If float convert to array
     if isinstance(a, float):
-        a = a * np.ones(N)
+        a = a * jnp.ones(N)
     else:
-        a = np.asarray(a)
+        a = jnp.asarray(a)
 
     omegas = 2 * np.pi * f
 
@@ -59,7 +60,7 @@ def _set_nodes(A: np.ndarray, f: float, fs: float, a: float):
         size=(N, 1)
     )
 
-    return N, A, omegas, phases, dt, a
+    return N, A, omegas, jnp.asarray(phases), dt, a
 
 
 def _set_nodes_delayed(A: np.ndarray, D: np.ndarray, f: float, fs: float, a: float):

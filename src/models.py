@@ -1,43 +1,25 @@
 ##
+import jax
+import jax.numpy as jnp
 import numpy as np
-from .models_setup import _set_nodes, _set_nodes_delayed
+from .models_setup import _set_nodes
+from .utils import randn
 
 """
 FUNCTIONS LOOP MIGHT BE COMPILED WITH JAX SCAN LATER
 """
 
 
+# @jax.jit
+# @partial(jax.vmap, in_axes=(0, None, None))
+@jax.jit
 def _ode(Z: np.complex128, a: float, w: float):
-    return Z * (a + 1j * w - np.abs(Z * Z))
+    return Z * (a + 1j * w - jnp.abs(Z * Z))
 
 
-def _loop(carry, t, dt):
+def _loop_delayed(carry, t):
 
-    N, A, g, Iext, omegas, a, eta, phases_history = carry
-
-    phases_t = phases_history.squeeze().copy()
-
-    phase_differences = phases_t - phases_history
-
-    # Input to each node
-    Input = (g * A * phase_differences).sum(axis=1) + Iext[:, t] * np.exp(
-        1j * np.angle(phases_t)
-    )
-
-    phases_history = (
-        phases_t
-        + dt * _ode(phases_t, a, omegas)
-        + dt * Input
-        + np.sqrt(dt) * eta * np.random.normal(size=N)
-        + np.sqrt(dt) * eta * 1j * np.random.normal(size=N)
-    )
-
-    return phases_history.reshape(N, 1)
-
-
-def _loop_delayed(carry, t, dt):
-
-    N, A, D, omegas, a, eta, phases_history = carry
+    N, A, D, omegas, a, eta, dt, seed, phases_history = carry
 
     phases_t = phases_history[:, -1].copy()
 
@@ -67,9 +49,8 @@ def _loop_delayed(carry, t, dt):
     return phases_history
 
 
-def KuramotoOscillators(
+def simulate(
     A: np.ndarray,
-    g: np.ndarray,
     f: float,
     a: float,
     fs: float,
@@ -77,59 +58,45 @@ def KuramotoOscillators(
     T: float,
     D: np.ndarray = None,
     Iext: np.ndarray = None,
+    seed: int = 0,
+    device: str = "cpu",
 ):
 
-    if isinstance(D, np.ndarray) and D.any():
-        N, A, D, omegas, phases_history, dt, a = _set_nodes_delayed(A, D, f, fs, a)
-        carry = [N, A, D, omegas, a, eta * np.sqrt(dt), phases_history]
-        _loop_fun = _loop_delayed
-    else:
-        N, A, omegas, phases_history, dt, a = _set_nodes(A, f, fs, a)
-        carry = [N, A, g, Iext, omegas, a, eta, phases_history]
-        _loop_fun = _loop
+    assert device in ["cpu", "gpu"]
 
-    # Stored phases of each node
-    phases = np.zeros((N, T), dtype=np.complex128)
+    jax.config.update("jax_platform_name", device)
 
-    for t in range(T):
-        # Update
-        phases_history = _loop_fun(carry, t, dt)
-        # print(phases_history.shape)
-        # Store
-        phases[:, t] = phases_history[:, -1]
-        # New carry only phases history changes
-        carry[-1] = phases_history
+    # Assure it is a jax ndarray
+    Iext = jnp.asarray(Iext)
 
-    return phases, True
+    N, A, omegas, phases_history, dt, a = _set_nodes(A, f, fs, a)
+    times = np.arange(T, dtype=int)
 
+    @jax.jit
+    def _loop(carry, t):
 
-###
+        phases_history = carry
 
-if __name__ == "__main__":
+        phases_t = phases_history.squeeze().copy()
 
-    import matplotlib.pyplot as plt
+        phase_differences = phases_t - phases_history
 
-    ### Simulated data
+        # Input to each node
+        Input = (A * phase_differences).sum(axis=1) + Iext[:, t] * jnp.exp(
+            1j * jnp.angle(phases_t)
+        )
 
-    # Parameters
-    fs = 600
-    time = np.arange(-0.5, 1, 1 / fs)
-    T = len(time)
-    C = np.array([[0, 1, 0], [0, 0, 1], [0, 0, 0]]).T
+        phases_history = phases_history.at[:, 0].set(
+            phases_t
+            + dt * _ode(phases_t, a, omegas)
+            + dt * Input
+            + jnp.sqrt(dt) * eta * randn(size=(N,), seed=seed + t)
+            + jnp.sqrt(dt) * eta * 1j * randn(size=(N,), seed=seed + t)
+        )
 
-    # Derived parameters
-    N = C.shape[0]
-    D = 10 * np.ones((N, N))  # Fixed delay matrix divided by 1000
-    C = C / np.mean(C[np.ones((N, N)) - np.eye(N) > 0])
-    f = 40  # Node natural frequency in Hz
-    K = 10  # Global coupling strength
+        carry = jax.lax.reshape(phases_history, (N, 1))
+        return carry, phases_history
 
-    # Generate random placeholder data for TS with shape (3, Npoints)
-    TS, dt_save = KuramotoOscillators(K * C, f, fs, 0 * 3.5, T, D, np.ones(T))
+    _, phases = jax.lax.scan(_loop, (phases_history), times)
 
-    # Extract time series data
-    x, y, z = TS[0], TS[1], TS[2]
-
-    plt.plot(time, x)
-    plt.plot(time, y)
-    # plt.plot(time, z)
+    return phases
