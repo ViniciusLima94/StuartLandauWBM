@@ -46,14 +46,22 @@ flnMat = g * (1 + eta * h)[:, np.newaxis] * flnMat
 
 Iext = np.zeros((Nareas, Npoints))
 Iext[0, (time >= 0) & (time <= 0.2)] = 1
-CS = np.linspace(0, 0.1, ntrials)
+Amplitudes = np.linspace(0, 0.1, ntrials)
+CS = Amplitudes[..., None, None] * Iext
+seeds = np.random.randint(0, 10000, ntrials)
 
-data = []
-for n in tqdm(range(ntrials)):
-    temp = simulate(flnMat.T, f, -5.0, fsamp, beta, Npoints, None, CS[n] * Iext, 109)
-    data += [temp]
+simulate_vmap = jax.vmap(
+    simulate, in_axes=(None, None, None, None, None, None, None, 0, 0, None)
+)
+data = simulate_vmap(flnMat, f, -5, fsamp, beta, Npoints, None, CS, seeds, "cpu")
 
+# data = []
+# for n in tqdm(range(ntrials)):
+#    temp = simulate(flnMat.T, f, -5.0, fsamp, beta, Npoints, None, CS[n] * Iext, 190)
+#    data += [temp]
+#
 data = np.stack(data)
+data = data.squeeze().transpose(0, 2, 1)
 # Output the shapes of data and datah for verification
 data.shape
 
@@ -94,12 +102,16 @@ area_names = [
 data = xr.DataArray(
     data[..., ::15],
     dims=("trials", "roi", "times"),
-    coords=(CS, area_names, time[::15]),
+    coords=(Amplitudes, area_names, time[::15]),
 )
 
 ## Plot
 
 z_data = (data - data.mean("times")) / data.std("times")
+plt.subplot(1, 2, 1)
+for i in range(Nareas):
+    plt.plot(z_data[-1].times, z_data[0].values[i].real + (i * 3))
+plt.subplot(1, 2, 2)
 for i in range(Nareas):
     plt.plot(z_data[-1].times, z_data[-1].values[i].real + (i * 3))
 
@@ -196,7 +208,9 @@ plt.figure(figsize=(40, 40))
 for pos, _out in enumerate(out):
     plt.subplot(6, 5, pos + 1)
     i, j = pairs[pos]
-    _out.T.plot(cmap="turbo", vmin=0, vmax=1)
+    _out.T.plot(
+        cmap="turbo",
+    )
     plt.title(f"{rois[i]}-{rois[j]}")
     plt.xticks(fontsize=9)
     plt.yticks(fontsize=9)

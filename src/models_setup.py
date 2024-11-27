@@ -43,13 +43,13 @@ def _set_nodes(A: np.ndarray, f: float, fs: float, a: float):
     N = A.shape[0]
 
     # If float convert to array
-    if isinstance(f, float):
+    if isinstance(f, (int, float)):
         f = f * jnp.ones(N)
     else:
         f = jnp.asarray(f)
 
     # If float convert to array
-    if isinstance(a, float):
+    if isinstance(a, (int, float)):
         a = a * jnp.ones(N)
     else:
         a = jnp.asarray(a)
@@ -60,7 +60,7 @@ def _set_nodes(A: np.ndarray, f: float, fs: float, a: float):
         size=(N, 1)
     )
 
-    return N, A, omegas, jnp.asarray(phases), dt, a
+    return N, A, omegas, jnp.asarray(phases).astype(jnp.complex128), dt, a
 
 
 def _set_nodes_delayed(A: np.ndarray, D: np.ndarray, f: float, fs: float, a: float):

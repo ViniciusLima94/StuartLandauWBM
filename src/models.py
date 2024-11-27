@@ -3,13 +3,16 @@ import jax.numpy as jnp
 import numpy as np
 from .models_setup import _set_nodes
 from .utils import randn
+from functools import partial
+
+jax.config.update("jax_enable_x64", True)
 
 """
 FUNCTIONS LOOP MIGHT BE COMPILED WITH JAX SCAN LATER
 """
 
 
-@jax.jit
+@partial(jax.vmap, in_axes=(0, 0, 0))
 def _ode(Z: np.complex128, a: float, w: float):
     return Z * (a + 1j * w - jnp.abs(Z * Z))
 
