@@ -75,6 +75,11 @@ def simulate(
 
     times = np.arange(T, dtype=int)  # Time array
 
+    # Scale with dt to avoid doing it evert time-step
+    A = A * dt
+    eta = eta * jnp.sqrt(dt)
+    Iext = Iext * dt
+
     @jax.jit
     def _loop(carry, t):
 
@@ -92,9 +97,9 @@ def simulate(
         phases_history = phases_history.at[:, 0].set(
             phases_t
             + dt * _ode(phases_t, a, omegas)
-            + dt * Input
-            + jnp.sqrt(dt) * eta * randn(size=(N,), seed=seed + t)
-            + jnp.sqrt(dt) * eta * 1j * randn(size=(N,), seed=seed + t)
+            + Input
+            + eta * randn(size=(N,), seed=seed + t)
+            + eta * 1j * randn(size=(N,), seed=seed + t)
         )
 
         carry = jax.lax.reshape(phases_history, (N, 1))
