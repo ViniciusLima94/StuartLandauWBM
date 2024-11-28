@@ -105,22 +105,20 @@ def _set_nodes_delayed(A: np.ndarray, D: np.ndarray, f: float, fs: float, a: flo
     N, A, omegas, _, dt, a = _set_nodes(A, f, fs, a)
 
     # Work on the delay matrix
-    D = np.asarray(D)
+    D = jnp.asarray(D)
 
     # Zero delay if there is no connection and convert to time-step
-    D = np.round(D * (A > 0) / dt).astype(int)
+    D = jnp.round(D * (A > 0) / dt).astype(int)
 
     # Maximum delay
-    max_delay = int(np.max(D) + 1)
+    max_delay = jnp.max(D) + 1
+    print(max_delay)
     # Revert the Delays matrix such that it contains the index of the History
     # that we need to retrieve at each dt
     D = max_delay - D
 
-    # Randomly initialize phases and keeps it only up to max delay
-    # phases = 2 * np.pi * np.random.rand(N, 1) + omegas * np.ones(
-    #     (N, max_delay)
-    # ) * np.arange(max_delay)
+    phases = dt * np.random.normal(size=(N, max_delay)) + 1j * dt * np.random.normal(
+        size=(N, max_delay)
+    )
 
-    phases = dt * np.random.rand(N, max_delay) + 1j * dt * np.random.rand(N, max_delay)
-
-    return N, A, D, omegas, phases, dt, a
+    return N, A, D, omegas, jnp.asarray(phases).astype(jnp.complex128), dt, a

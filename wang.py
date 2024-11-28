@@ -2,7 +2,7 @@ import numpy as np
 import xarray as xr
 import matplotlib.pyplot as plt
 import jax
-from src.models import simulate
+from src.models import simulate_delayed
 from mne.time_frequency.tfr import tfr_array_morlet
 from tqdm import tqdm
 from hoi.core import get_mi
@@ -36,7 +36,7 @@ time = np.arange(-2, 5, 1 / fsamp)
 beta = 0.001
 Npoints = len(time)
 # Convert to timesteps
-D = (D * fsamp).astype(int)
+# D = (D * fsamp).astype(int)
 
 f = 40  # np.linspace(20, 60, Nareas)[::-1]  # Node natural frequency in Hz
 
@@ -51,15 +51,15 @@ CS = Amplitudes[..., None, None] * Iext
 seeds = np.random.randint(0, 10000, ntrials)
 
 simulate_vmap = jax.vmap(
-    simulate, in_axes=(None, None, None, None, None, None, None, 0, 0, None)
+    simulate_delayed, in_axes=(None, None, None, None, None, None, None, 0, 0, None)
 )
-data = simulate_vmap(flnMat, f, -5, fsamp, beta, Npoints, None, CS, seeds, "cpu")
+# data = simulate_vmap(flnMat, D, f, -5, fsamp, beta, Npoints, CS, seeds, "cpu")
 
-# data = []
-# for n in tqdm(range(ntrials)):
-#    temp = simulate(flnMat.T, f, -5.0, fsamp, beta, Npoints, None, CS[n] * Iext, 190)
-#    data += [temp]
-#
+data = []
+for n in tqdm(range(ntrials)):
+    temp = simulate_delayed(flnMat, D, f, -5.0, fsamp, beta, Npoints, CS[n] * Iext, 190)
+    data += [temp]
+
 data = np.stack(data)
 data = data.squeeze().transpose(0, 2, 1)
 # Output the shapes of data and datah for verification
