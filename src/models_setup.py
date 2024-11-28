@@ -112,7 +112,6 @@ def _set_nodes_delayed(A: np.ndarray, D: np.ndarray, f: float, fs: float, a: flo
 
     # Maximum delay
     max_delay = jnp.max(D) + 1
-    print(max_delay)
     # Revert the Delays matrix such that it contains the index of the History
     # that we need to retrieve at each dt
     D = max_delay - D

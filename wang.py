@@ -11,9 +11,9 @@ from frites.core import copnorm_nd
 
 jax.config.update("jax_platform_name", "cpu")
 
-x = jax.numpy.square(2)
-print(repr(x.device_buffer.device()))
-
+# x = jax.numpy.square(2)
+# print(repr(x.device_buffer.device()))
+#
 ## Load anatomical data
 data = np.load("interareal/markov2014.npy", allow_pickle=True).item()
 
@@ -30,7 +30,7 @@ eta = 4.0
 
 ## Simulation parameters
 
-ntrials = 100
+ntrials = 30
 fsamp = 1 / 1e-4
 time = np.arange(-2, 5, 1 / fsamp)
 beta = 0.001
@@ -57,7 +57,9 @@ simulate_vmap = jax.vmap(
 
 data = []
 for n in tqdm(range(ntrials)):
-    temp = simulate_delayed(flnMat, D, f, -5.0, fsamp, beta, Npoints, CS[n] * Iext, 190)
+    temp = simulate_delayed(
+        flnMat, D, f, -5.0, fsamp, beta, Npoints, CS[n] * Iext, seeds[n]
+    )
     data += [temp]
 
 data = np.stack(data)
@@ -165,7 +167,7 @@ S = xr.DataArray(
 def _mi(S, roi_x, roi_y, stim):
 
     # Define the function to compute MI using HOI and JAX
-    mi_fcn = get_mi("gcmi")
+    mi_fcn = get_mi("gc")
 
     # vectorize the function to first and second dimension
     gcmi = jax.vmap(jax.vmap(mi_fcn, in_axes=0), in_axes=0)

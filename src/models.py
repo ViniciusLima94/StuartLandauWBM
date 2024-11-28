@@ -66,7 +66,7 @@ def simulate(
             + dt * _ode(phases_t, a, omegas)
             + Input
             + eta * randn(size=(N,), seed=seed + t)
-            + eta * 1j * randn(size=(N,), seed=seed + t)
+            + eta * 1j * randn(size=(N,), seed=seed + t + 2 * t)
         )
 
         carry = jax.lax.reshape(phases_history, (N, 1))
@@ -119,7 +119,7 @@ def simulate_delayed(
 
         @partial(jax.vmap, in_axes=(0, 0))
         def _return_phase_differences(n, d):
-            return phases_t[n] - phases_history[np.indices(d.shape)[0], d - 1]
+            return phases_history[np.indices(d.shape)[0], d - 1] - phases_t[n]
 
         phase_differences = _return_phase_differences(nodes, D)
 
@@ -139,7 +139,7 @@ def simulate_delayed(
             + dt * _ode(phases_t, a, omegas)
             + Input
             + eta * randn(size=(N,), seed=seed + t)
-            + eta * 1j * randn(size=(N,), seed=seed + t)
+            + eta * 1j * randn(size=(N,), seed=seed + t + 2 * t)
         )
 
         carry = phases_history  # jax.lax.reshape(phases_history, (N, max_delay))
