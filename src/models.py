@@ -12,7 +12,7 @@ FUNCTIONS LOOP MIGHT BE COMPILED WITH JAX SCAN LATER
 """
 
 
-@partial(jax.vmap, in_axes=(0, 0, 0))
+# @partial(jax.vmap, in_axes=(0, 0, 0))
 def _ode(Z: np.complex128, a: float, w: float):
     return Z * (a + 1j * w - jnp.abs(Z * Z))
 
