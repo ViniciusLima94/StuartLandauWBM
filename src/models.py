@@ -19,6 +19,7 @@ def _ode(Z: np.complex128, a: float, w: float):
 
 def simulate(
     A: np.ndarray,
+    g: float,
     f: float,
     a: float,
     fs: float,
@@ -27,6 +28,7 @@ def simulate(
     Iext: np.ndarray = None,
     seed: int = 0,
     device: str = "cpu",
+    decim: int = 1,
 ):
 
     assert device in ["cpu", "gpu"]
@@ -43,7 +45,7 @@ def simulate(
     times = np.arange(T, dtype=int)  # Time array
 
     # Scale with dt to avoid doing it evert time-step
-    A = A * dt
+    A = g * A * dt
     eta = eta * jnp.sqrt(dt)
     Iext = Iext * dt
 
@@ -74,12 +76,13 @@ def simulate(
 
     _, phases = jax.lax.scan(_loop, (phases_history), times)
 
-    return phases
+    return phases[::decim]
 
 
 def simulate_delayed(
     A: np.ndarray,
     D: np.ndarray,
+    g: float,
     f: float,
     a: float,
     fs: float,
@@ -88,6 +91,7 @@ def simulate_delayed(
     Iext: np.ndarray = None,
     seed: int = 0,
     device: str = "cpu",
+    decim: int = 1,
 ):
 
     assert device in ["cpu", "gpu"]
@@ -104,7 +108,7 @@ def simulate_delayed(
     times = np.arange(T, dtype=int)  # Time array
 
     # Scale with dt to avoid doing it evert time-step
-    A = A * dt
+    A = g * A * dt
     eta = eta * jnp.sqrt(dt)
     Iext = Iext * dt
 
@@ -147,4 +151,4 @@ def simulate_delayed(
 
     _, phases = jax.lax.scan(_loop_delayed, (phases_history), times)
 
-    return phases
+    return phases[::decim]
