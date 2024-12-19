@@ -29,8 +29,10 @@ def simulate(
     seed: int = 0,
     device: str = "cpu",
     decim: int = 1,
+    stim_mode: str = "amp",
 ):
 
+    assert stim_mode in ["amp", "phase", "both"]
     assert device in ["cpu", "gpu"]
 
     jax.config.update("jax_platform_name", device)
@@ -41,6 +43,19 @@ def simulate(
         Iext = jnp.zeros((N, T))
     else:
         Iext = jnp.asarray(Iext)  # Assure it is a jax ndarray
+
+    # Stim parameters
+    gain = 0
+    phi = 0
+    offset = 1
+
+    if stim_mode == "amp":
+        gain = 1
+        offset = 0
+    elif stim_mode == "phase":
+        gain = 1
+        phi = np.pi / 2
+        offset = 0
 
     times = np.arange(T, dtype=int)  # Time array
 
@@ -58,10 +73,10 @@ def simulate(
 
         phase_differences = phases_t - phases_history
 
+        exp_phi = gain * jnp.exp(1j * (jnp.angle(phases_t) + phi)) + offset
+
         # Input to each node
-        Input = (A * phase_differences).sum(axis=1) + Iext[:, t] * jnp.exp(
-            1j * jnp.angle(phases_t)
-        )
+        Input = (A * phase_differences).sum(axis=1) + Iext[:, t] * exp_phi
 
         phases_history = phases_history.at[:, 0].set(
             phases_t
@@ -92,8 +107,10 @@ def simulate_delayed(
     seed: int = 0,
     device: str = "cpu",
     decim: int = 1,
+    stim_mode: str = "amp",
 ):
 
+    assert stim_mode in ["amp", "phase", "both"]
     assert device in ["cpu", "gpu"]
 
     jax.config.update("jax_platform_name", device)
@@ -104,6 +121,19 @@ def simulate_delayed(
         Iext = jnp.zeros((N, T))
     else:
         Iext = jnp.asarray(Iext)  # Assure it is a jax ndarray
+
+    # Stim parameters
+    gain = 0
+    phi = 0
+    offset = 1
+
+    if stim_mode == "amp":
+        gain = 1
+        offset = 0
+    elif stim_mode == "phase":
+        gain = 1
+        phi = np.pi / 2
+        offset = 0
 
     times = np.arange(T, dtype=int)  # Time array
 
@@ -131,10 +161,10 @@ def simulate_delayed(
         #    [_return_phase_differences(n, d) for n, d in enumerate(D)]
         # )
 
+        exp_phi = gain * jnp.exp(1j * (jnp.angle(phases_t) + phi)) + offset
+
         # Input to each node
-        Input = (A * phase_differences).sum(axis=1) + Iext[:, t] * jnp.exp(
-            1j * jnp.angle(phases_t)
-        )
+        Input = (A * phase_differences).sum(axis=1) + Iext[:, t] * exp_phi
 
         phases_history = phases_history.at[:, :-1].set(phases_history[:, 1:])
 
