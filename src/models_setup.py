@@ -59,7 +59,6 @@ def _set_nodes(A: np.ndarray, f: float, fs: float, a: float):
     phases = dt * np.random.normal(size=(N, 1)) + 1j * dt * np.random.normal(
         size=(N, 1)
     )
-
     return N, A, omegas, jnp.asarray(phases).astype(jnp.complex128), dt, a
 
 
